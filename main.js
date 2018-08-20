@@ -9,13 +9,16 @@ document.addEventListener("keyup", keyHandler);
 
 let ballRadius = 10;
 let ballOffset = ballRadius / 2;
-
+let totalRows = 12;
 let boxesPerRow = 15;
+let sideSpacing = 2; // the number of boxs worth of space to have, 2 means one on each side
 let boxMargin = 2;
-let boxSpacing = boxesPerRow * boxMargin; 
-console.log(boxSpacing)
-let boxWidthByCanvasSize = (canvas.width - boxSpacing) / boxesPerRow;
-console.log(boxWidthByCanvasSize)
+let boxSpacingX = boxesPerRow * boxMargin; 
+let boxSpacingY = totalRows * boxMargin;
+let boxWidthByCanvasSize = (canvas.width - boxSpacingX) / (boxesPerRow);
+let boxMoveInSpeed = 10;
+
+let boxesInStartingPositions = false;
 
 let boxHeight = 30;
 
@@ -23,6 +26,7 @@ let boxes = [];
 
 let ballTrail = [];
 let explosionParticles = [];
+
 
 let ballSpeed = 1;
 let paddleSpeed = 15;
@@ -61,7 +65,18 @@ function drawBall() {
 function start() {
   //drawBall();
   createBoxes();
-  update();
+  
+  moveAllBoxes();
+  waitForStart();
+}
+
+function waitForStart() {
+  // wait to start the update loop until the blocks have moved into their starting positions
+  if(boxesInStartingPositions) {
+    update();
+  } else {
+    requestAnimationFrame(waitForStart);
+  }
 }
 
 function drawBoxes() {
@@ -80,13 +95,12 @@ function drawBox(box) {
 function createBoxes() {
   let totalBoxes = 200;
   let numBoxes = 0;
-  let totalRows = 12;
   let numRows = 0;
-  let x = 0;
-  let y = boxHeight;
+  let x = boxWidthByCanvasSize;
+  let y = boxHeight * 2;
   while(numRows < totalRows) {
-    x = 0;
-    for(let i = 0; i < boxesPerRow; i++) {
+    x = boxWidthByCanvasSize;
+    for(let i = 0; i < (boxesPerRow - sideSpacing); i++) {
       createBox(x, y);
       x += boxWidthByCanvasSize + 2;      
     }
@@ -109,11 +123,15 @@ function createBoxes() {
 }
 
 function createBox(x, y) {
+  // draw all the boxes with an offset that pushes them offscreen
+  let yNegOffset = -((totalRows * boxHeight) + boxSpacingY + boxHeight * 2);
   let newBox = {
     x: x,
-    y: y,
+    y: y + yNegOffset,
     height: boxHeight,
     width: boxWidthByCanvasSize,
+    targetX: x,
+    targetY: y,
   }
   boxes.push(newBox)
 }
@@ -215,13 +233,14 @@ function checkBoxAndBallCollision(box) {
    ball.y < box.y + box.height &&
    ball.y + ball.height > box.y) {
     ballHitBox(box);
+    let newSound = new sound('ballHitBox');
   }
 }
 
 function ballHitBox(box) {
   // display special effects on hit
   hitBlockEffects(box);
-  let sideOfBallHit = getDirHit(box);
+  getDirHit(box);
   console.log('ball hit a box');
   for(let i = 0; i < boxes.length; i++) {
     if(box.x == boxes[i].x && box.y == boxes[i].y) {
@@ -231,14 +250,6 @@ function ballHitBox(box) {
 }
 
 function getDirHit(box) {
-  /*
-  if(ball.x > box.x) {
-    console.log('hit left side of ball')
-  } else if(ball.x < box.x) {
-    console.log('hit right side of ball')
-  }
-  */
-  
   if(ball.y <= box.y - (boxHeight/2)) {
     //console.log('hit bot')
     ball.velY = -ball.velY;
@@ -262,8 +273,6 @@ function getDirHit(box) {
     //ball.velX = -ball.velX;
   }
     //Hit was on right
-  
-  
 }
 
 function checkPaddleCollision() {
@@ -273,10 +282,23 @@ function checkPaddleCollision() {
    ball.y < paddle.y + paddle.height &&
    ball.y + ball.height > paddle.y) {
     ballHitPaddle();
+    let newSound = new sound('ballHitPaddle');
   }
 }
 
 function ballHitPaddle() {
+  // find out which side the ball hit the paddle
+ 
+  if(ball.x + (ball.width / 2) > paddle.x + ((paddle.width / 3) * 2)) {
+    // hit right side
+    console.log('hit right side of paddle')
+    ball.velX = Math.abs(ball.velX);
+  } else if(ball.x + (ball.width / 2) < paddle.x + ((paddle.width / 3))){
+    // hit left side
+    ball.velX = -Math.abs(ball.velX);
+  }
+  // for center hit just do inverse y and keep x same
+  
   ball.velY = -ball.velY;
 }
 
@@ -376,6 +398,84 @@ function clearExplosions() {
           }
         }
     });
+  }
+}
+
+function sound(event) {
+  
+  let src = setSoundSRC(event);
+  
+  this.sound = document.createElement("audio");
+  this.sound.src = src;
+  this.sound.setAttribute("preload", "auto");
+  this.sound.setAttribute("controls", "none");
+  this.sound.style.display = "none";
+  document.body.appendChild(this.sound);
+  this.play = function(){
+      this.sound.play();
+  }
+  this.pause = function(){
+      this.sound.pause();
+  }
+  
+  this.play();
+  
+  setTimeout(() => {
+    clearOldSounds();
+  }, 3000);
+}
+
+function setSoundSRC(event) {
+  if(event == 'ballHitBox') {
+    // if ball hit a box
+    let randSound = Math.random(); // rand 0 to 1
+    if(randSound > 0.5) {
+      src = "./assets/sounds/ballHitBrick1.mp3";
+    } else {
+      src = "./assets/sounds/ballHitBrick2.mp3";  
+    }
+  } else if(event == 'ballHitPaddle') {
+    // if ball hit the paddle
+    src = "./assets/sounds/paddleHit2.wav";
+  }
+  
+  return src;
+}
+
+function clearOldSounds() {
+  let sounds = document.getElementsByTagName('audio');
+  let soundsArray = Array.from(sounds);
+  document.body.removeChild(soundsArray[0])
+}
+
+function drawBoxesSlowly() {
+  boxes.forEach((box) => {
+    ctx.beginPath();
+    ctx.fillStyle = "Red";
+    ctx.fillRect(box.x, box.y, box.width, box.height);
+  });
+}
+
+function moveAllBoxes() {
+  console.log(boxes[0].y, boxes[0].targetY);
+  if(boxes[0].y != boxes[0].targetY) {
+    // check if one of the boxes is in the current pos if so then stop updating
+    boxes.forEach((box) => {
+      if(box.y < box.targetY) {
+        if(box.y + boxMoveInSpeed > box.targetY) {
+          let distToTarget = box.targetY - box.y;
+          box.y += distToTarget;
+        } else {
+          box.y += boxMoveInSpeed;
+        }
+        
+      }
+    });
+    clearCanvas();
+    drawBoxesSlowly();
+    requestAnimationFrame(moveAllBoxes);
+  } else {
+    boxesInStartingPositions = true;
   }
 }
 

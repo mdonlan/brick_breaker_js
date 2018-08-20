@@ -2,4 +2,9 @@ Brick Breaker JS TODO
 
 1. make hit on the paddle bounce based off where they hit on the paddle
     -ex. if the ball hits the far left of the paddle the ball should bound very left, rather than just reverseing it's yVel, which is what were doing now
-    
+2. increase ball speed over time
+3. camera shake
+4. sounds
+5. start mode 
+    -- start in a paused state and allow the player to click start, then have a countdown
+6. 
