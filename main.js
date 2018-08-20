@@ -22,6 +22,7 @@ let boxHeight = 30;
 let boxes = [];
 
 let ballTrail = [];
+let explosionParticles = [];
 
 let ballSpeed = 1;
 let paddleSpeed = 15;
@@ -163,6 +164,8 @@ function updateBall() {
   createBallTrail();
   drawBallTrail();
   clearBallTrail();
+  drawExplosions();
+  clearExplosions();
 }
 
 function updatePaddle() {
@@ -295,7 +298,9 @@ function clearCanvas() {
 }
 
 function hitBlockEffects(box) {
+  // put any special effects that deal with the ball hitting something here
   changeBackground();
+  explosion();
 }
 
 function changeBackground() {
@@ -329,6 +334,48 @@ function clearBallTrail() {
     if(ballTrail[0].drawTime + 2000 < performance.now()) {
       ballTrail.splice(0,1);
     }
+  }
+}
+
+function explosion() {
+  let numParticles = 10;
+  for(let i = 0; i < numParticles; i++) {
+    let randX = Math.floor(Math.random() * 10) + 1;
+    let randY = Math.floor(Math.random() * 10) + 1;
+    randX *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+    randY *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+
+    let newParticle = {
+      x: ball.x,
+      y: ball.y,
+      velX: randX,
+      velY: randY,
+      drawTime: performance.now(),
+    }
+    explosionParticles.push(newParticle); 
+  }
+}
+
+function drawExplosions() {
+  explosionParticles.forEach((particle) => {
+      particle.x += particle.velX;
+      particle.y += particle.velY;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y , ball.radius, 0, 2*Math.PI);
+      ctx.fillStyle = "rgba(154, 63, 228, 0.49)";
+      ctx.fill();
+    });
+}
+
+function clearExplosions() {
+  if(explosionParticles.length > 0) {
+    explosionParticles.forEach((particle) => {
+        if(ballTrail.length > 0) {
+          if(ballTrail[0].drawTime + 2000 < performance.now()) {
+            ballTrail.splice(0,1);
+          }
+        }
+    });
   }
 }
 
