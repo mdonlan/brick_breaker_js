@@ -7,4 +7,7 @@ Brick Breaker JS TODO
 4. sounds
 5. start mode 
     -- start in a paused state and allow the player to click start, then have a countdown
-6. 
+6. instant replay closeup or ball missing paddle?
+7. add power up blocks
+    -- these blocks when hit will drop a power up
+    -- the player must move the paddle to 'catch' the power up or it will not activate

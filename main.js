@@ -17,23 +17,24 @@ let boxSpacingX = boxesPerRow * boxMargin;
 let boxSpacingY = totalRows * boxMargin;
 let boxWidthByCanvasSize = (canvas.width - boxSpacingX) / (boxesPerRow);
 let boxMoveInSpeed = 10;
-
 let boxesInStartingPositions = false;
-
 let boxHeight = 30;
-
 let boxes = [];
-
 let ballTrail = [];
 let explosionParticles = [];
-
-
 let ballSpeed = 1;
 let paddleSpeed = 15;
+let gameOver = false;
+let powerups = [];
 
 let keys = {
   a: false,
   d: false,
+}
+
+let cameraOffset = {
+  x: 0,
+  y: 0,
 }
 
 let ball = {
@@ -56,7 +57,7 @@ let paddle = {
 function drawBall() {
   
   ctx.beginPath();
-  ctx.arc(ball.x, ball.y , ball.radius, 0, 2*Math.PI);
+  ctx.arc(ball.x + cameraOffset.x, ball.y + cameraOffset.y, ball.radius, 0, 2*Math.PI);
   ctx.fillStyle = "White";
   ctx.fill();
   //ctx.stroke();
@@ -88,8 +89,8 @@ function drawBoxes() {
 function drawBox(box) {
   ctx.beginPath();
   //ctx.rect(x, y, box.width, box.height);
-  ctx.fillStyle = "Red";
-  ctx.fillRect(box.x, box.y, box.width, box.height);
+  ctx.fillStyle = box.color;
+  ctx.fillRect(box.x + cameraOffset.x, box.y + cameraOffset.y, box.width, box.height);
 }
 
 function createBoxes() {
@@ -125,6 +126,14 @@ function createBoxes() {
 function createBox(x, y) {
   // draw all the boxes with an offset that pushes them offscreen
   let yNegOffset = -((totalRows * boxHeight) + boxSpacingY + boxHeight * 2);
+  let powerupRandChance = Math.random();
+  
+  let color = '#CA2F0E';
+  let isPowerup = false;
+  if(powerupRandChance > .95) {
+    color = '#DEA823';
+    isPowerup = true;
+  }
   let newBox = {
     x: x,
     y: y + yNegOffset,
@@ -132,6 +141,10 @@ function createBox(x, y) {
     width: boxWidthByCanvasSize,
     targetX: x,
     targetY: y,
+    color: color,
+    isPowerUp: isPowerup,
+    
+    // rand color == "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);})
   }
   boxes.push(newBox)
 }
@@ -142,7 +155,10 @@ function update() {
   drawBoxes();
   updateBall();
   updatePaddle();
-  requestAnimationFrame(update);
+  
+  if(!gameOver) {
+    requestAnimationFrame(update);
+  }
 }
 
 function keyHandler(event) {
@@ -182,6 +198,7 @@ function updateBall() {
   createBallTrail();
   drawBallTrail();
   clearBallTrail();
+  drawPowerups();
   drawExplosions();
   clearExplosions();
 }
@@ -193,11 +210,15 @@ function updatePaddle() {
 
 function movePaddle() {
   if(keys.a) {
-    paddle.x -= 1 * paddleSpeed;
+    if(paddle.x + (1 * paddleSpeed) > 0) {
+      paddle.x -= 1 * paddleSpeed;
+    }
   }
   
   if(keys.d) {
-    paddle.x += 1 * paddleSpeed;
+    if(paddle.x + paddle.width + (1 * paddleSpeed) < canvas.width) {
+      paddle.x += 1 * paddleSpeed;
+    }
   }
 }
 
@@ -233,6 +254,7 @@ function checkBoxAndBallCollision(box) {
    ball.y < box.y + box.height &&
    ball.y + ball.height > box.y) {
     ballHitBox(box);
+    increaseBallSpeed();
     let newSound = new sound('ballHitBox');
   }
 }
@@ -241,11 +263,28 @@ function ballHitBox(box) {
   // display special effects on hit
   hitBlockEffects(box);
   getDirHit(box);
-  console.log('ball hit a box');
+  checkIfPowerup(box);
+  //console.log('ball hit a box');
   for(let i = 0; i < boxes.length; i++) {
     if(box.x == boxes[i].x && box.y == boxes[i].y) {
       boxes.splice(i, 1);
     }
+  }
+}
+
+function checkIfPowerup(box) {
+  if(box.isPowerUp) {
+    let newPowerup = {
+      x: box.x + (box.width / 2),
+      y: box.y + (box.height /2),
+      velX: 0,
+      velY: 2,
+      effect: null,
+      color: 'Green',
+      height: 20,
+      width: 20,
+    }
+    powerups.push(newPowerup);
   }
 }
 
@@ -291,7 +330,7 @@ function ballHitPaddle() {
  
   if(ball.x + (ball.width / 2) > paddle.x + ((paddle.width / 3) * 2)) {
     // hit right side
-    console.log('hit right side of paddle')
+    //console.log('hit right side of paddle')
     ball.velX = Math.abs(ball.velX);
   } else if(ball.x + (ball.width / 2) < paddle.x + ((paddle.width / 3))){
     // hit left side
@@ -306,11 +345,19 @@ function checkBounds() {
   let hitBounds = false;
   
   if(ball.x - ballOffset <= 0 || ball.x + ballOffset >= canvas.width) {
+    // hit left or right bounds
     ball.velX = -ball.velX;
   }
   
   if(ball.y - ballOffset < 0 || ball.y + ballOffset > canvas.height) {
-    ball.velY = -ball.velY;
+    // hit top or bot bounds
+    if(ball.y + ballOffset > canvas.height) {
+      // if the ball hits the bottom bound
+      gameOver = true;
+    } else {
+      ball.velY = -ball.velY;
+    }
+    
   }
  
 }
@@ -323,6 +370,36 @@ function hitBlockEffects(box) {
   // put any special effects that deal with the ball hitting something here
   changeBackground();
   explosion();
+  cameraShake();
+}
+
+function cameraShake() {
+  // after an event shake the camera 
+  
+  let numShakes = 0;
+  let maxShakes = 10;
+  let shakeInterval = setInterval(() => {
+    console.log('shake')
+    
+    let randX = Math.floor(Math.random() * 10) + 1;
+    let randY = Math.floor(Math.random() * 10) + 1;
+    randX *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+    randY *= Math.floor(Math.random()*2) == 1 ? 1 : -1; // this will add minus sign in 50% of cases
+    cameraOffset = {
+      x: randX,
+      y: randY,
+    }
+    
+    numShakes++;
+    if(numShakes >= maxShakes) {
+      clearInterval(shakeInterval);
+      cameraOffset = {
+        x: 0,
+        y: 0,
+      }
+    }
+    
+  }, 16);
 }
 
 function changeBackground() {
@@ -346,8 +423,10 @@ function drawBallTrail() {
   ballTrail.forEach((trail) => {
     ctx.beginPath();
     ctx.arc(trail.x, trail.y , ball.radius, 0, 2*Math.PI);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
-    ctx.fill();
+    //ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
+    //ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
+    ctx.stroke();
   })
 }
 
@@ -383,8 +462,8 @@ function drawExplosions() {
       particle.x += particle.velX;
       particle.y += particle.velY;
       ctx.beginPath();
-      ctx.arc(particle.x, particle.y , ball.radius, 0, 2*Math.PI);
-      ctx.fillStyle = "rgba(154, 63, 228, 0.49)";
+      ctx.arc(particle.x + cameraOffset.x, particle.y + cameraOffset.y, (ball.radius / 3), 0, 2*Math.PI);
+      ctx.fillStyle = "rgba(232, 213, 48, 1)";
       ctx.fill();
     });
 }
@@ -392,9 +471,9 @@ function drawExplosions() {
 function clearExplosions() {
   if(explosionParticles.length > 0) {
     explosionParticles.forEach((particle) => {
-        if(ballTrail.length > 0) {
-          if(ballTrail[0].drawTime + 2000 < performance.now()) {
-            ballTrail.splice(0,1);
+        if(explosionParticles.length > 0) {
+          if(explosionParticles[0].drawTime + 2000 < performance.now()) {
+            explosionParticles.splice(0,1);
           }
         }
     });
@@ -436,7 +515,8 @@ function setSoundSRC(event) {
     }
   } else if(event == 'ballHitPaddle') {
     // if ball hit the paddle
-    src = "./assets/sounds/paddleHit2.wav";
+    //src = "./assets/sounds/paddleHit2.wav";
+    src = "./assets/sounds/paddleHit1.mp3";
   }
   
   return src;
@@ -451,13 +531,12 @@ function clearOldSounds() {
 function drawBoxesSlowly() {
   boxes.forEach((box) => {
     ctx.beginPath();
-    ctx.fillStyle = "Red";
+    ctx.fillStyle = box.color;
     ctx.fillRect(box.x, box.y, box.width, box.height);
   });
 }
 
 function moveAllBoxes() {
-  console.log(boxes[0].y, boxes[0].targetY);
   if(boxes[0].y != boxes[0].targetY) {
     // check if one of the boxes is in the current pos if so then stop updating
     boxes.forEach((box) => {
@@ -477,6 +556,21 @@ function moveAllBoxes() {
   } else {
     boxesInStartingPositions = true;
   }
+}
+
+function increaseBallSpeed() {
+  ballSpeed += 0.01;
+}
+
+function drawPowerups() {
+  powerups.forEach((powerup) => {
+    powerup.x += powerup.velX;
+    powerup.y += powerup.velY;
+    ctx.beginPath();
+    //ctx.rect(x, y, box.width, box.height);
+    ctx.fillStyle = powerup.color;
+    ctx.fillRect(powerup.x + cameraOffset.x, powerup.y + cameraOffset.y, powerup.width, powerup.height);
+  });
 }
 
 start();
