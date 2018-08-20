@@ -1,4 +1,4 @@
-let canvas = document.getElementById("game_canvas");
+let canvas = document.querySelector(".game_canvas");
 let ctx = canvas.getContext("2d");
 
 canvas.height = window.innerHeight;
@@ -21,14 +21,19 @@ let boxHeight = 30;
 
 let boxes = [];
 
+let ballTrail = [];
+
+let ballSpeed = 1;
+let paddleSpeed = 15;
+
 let keys = {
   a: false,
   d: false,
 }
 
 let ball = {
-  x: 10,
-  y: 10,
+  x: (canvas.width / 2 ) - ballRadius / 2,
+  y: canvas.height - 60,
   velX: 5,
   velY: 5,
   width: 10,
@@ -47,7 +52,7 @@ function drawBall() {
   
   ctx.beginPath();
   ctx.arc(ball.x, ball.y , ball.radius, 0, 2*Math.PI);
-  ctx.fillStyle = "Blue";
+  ctx.fillStyle = "White";
   ctx.fill();
   //ctx.stroke();
 }
@@ -74,7 +79,7 @@ function drawBox(box) {
 function createBoxes() {
   let totalBoxes = 200;
   let numBoxes = 0;
-  let totalRows = 15;
+  let totalRows = 12;
   let numRows = 0;
   let x = 0;
   let y = boxHeight;
@@ -155,6 +160,9 @@ function updateBall() {
   }
   
   drawBall();
+  createBallTrail();
+  drawBallTrail();
+  clearBallTrail();
 }
 
 function updatePaddle() {
@@ -164,24 +172,24 @@ function updatePaddle() {
 
 function movePaddle() {
   if(keys.a) {
-    paddle.x -= 5;
+    paddle.x -= 1 * paddleSpeed;
   }
   
   if(keys.d) {
-    paddle.x += 5;
+    paddle.x += 1 * paddleSpeed;
   }
 }
 
 function drawPaddle() {
   ctx.beginPath();
   ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
-  ctx.fillStyle = "Red";
+  ctx.fillStyle = "#0066ff";
   ctx.fill();
 }
 
 function moveBall() {
-  ball.x += ball.velX;
-  ball.y += ball.velY;
+  ball.x += ball.velX * ballSpeed;
+  ball.y += ball.velY * ballSpeed;
 }
 
 function checkCollision() {
@@ -193,6 +201,65 @@ function checkCollision() {
 }
 
 function checkBoxCollision() {
+  boxes.forEach((box) => {
+    checkBoxAndBallCollision(box);
+  });
+}
+
+function checkBoxAndBallCollision(box) {
+  if (ball.x < box.x + box.width &&
+   ball.x + ball.width > box.x &&
+   ball.y < box.y + box.height &&
+   ball.y + ball.height > box.y) {
+    ballHitBox(box);
+  }
+}
+
+function ballHitBox(box) {
+  // display special effects on hit
+  hitBlockEffects(box);
+  let sideOfBallHit = getDirHit(box);
+  console.log('ball hit a box');
+  for(let i = 0; i < boxes.length; i++) {
+    if(box.x == boxes[i].x && box.y == boxes[i].y) {
+      boxes.splice(i, 1);
+    }
+  }
+}
+
+function getDirHit(box) {
+  /*
+  if(ball.x > box.x) {
+    console.log('hit left side of ball')
+  } else if(ball.x < box.x) {
+    console.log('hit right side of ball')
+  }
+  */
+  
+  if(ball.y <= box.y - (boxHeight/2)) {
+    //console.log('hit bot')
+    ball.velY = -ball.velY;
+  }
+  //Hit was from below the brick
+
+  if(ball.y >= box.y + (boxHeight/2)) {
+    //console.log('hit top')
+    ball.velY = -ball.velY;
+  }
+    //Hit was from above the brick
+
+  if(ball.x < box.x) {
+    //console.log('hit left')
+    //ball.velX = -ball.velX;
+  }
+    //Hit was on left
+
+  if(ball.x > box.x) {
+    //console.log('hit right')
+    //ball.velX = -ball.velX;
+  }
+    //Hit was on right
+  
   
 }
 
@@ -225,6 +292,44 @@ function checkBounds() {
 
 function clearCanvas() {
   ctx.clearRect(0,0, canvas.width, canvas.height);
+}
+
+function hitBlockEffects(box) {
+  changeBackground();
+}
+
+function changeBackground() {
+  let canvas = document.querySelector(".game_canvas");
+  canvas.classList.add("canvas_flash_background");
+  setTimeout(() => {
+    canvas.classList.remove("canvas_flash_background");
+  }, 200);
+}
+
+function createBallTrail() {
+  let newTrail = {
+    x: ball.x,
+    y: ball.y,
+    drawTime: performance.now(),
+  }
+  ballTrail.push(newTrail);
+}
+
+function drawBallTrail() {
+  ballTrail.forEach((trail) => {
+    ctx.beginPath();
+    ctx.arc(trail.x, trail.y , ball.radius, 0, 2*Math.PI);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
+    ctx.fill();
+  })
+}
+
+function clearBallTrail() {
+  if(ballTrail.length > 0) {
+    if(ballTrail[0].drawTime + 2000 < performance.now()) {
+      ballTrail.splice(0,1);
+    }
+  }
 }
 
 start();
