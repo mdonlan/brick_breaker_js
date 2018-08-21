@@ -22,8 +22,8 @@ let boxHeight = 30;
 let boxes = [];
 let ballTrail = [];
 let explosionParticles = [];
-let ballSpeed = 1;
-let paddleSpeed = 15;
+let ballSpeed = 0.5;
+let paddleSpeed = 10;
 let gameOver = false;
 let powerups = [];
 
@@ -50,20 +50,20 @@ let ball = {
   velY: 5,
   width: 10,
   height: 10,
-  radius: 10,
+  diameter: 10,
 };
 
 let paddle = {
   x: canvas.width / 2,
   y: canvas.height - 30,
-  width: 100,
+  width: canvas.width / 10,
   height: 10,
 };
 
 function drawBall() {
   
   ctx.beginPath();
-  ctx.arc(ball.x + cameraOffset.x, ball.y + cameraOffset.y, ball.radius, 0, 2*Math.PI);
+  ctx.arc(ball.x + cameraOffset.x, ball.y + cameraOffset.y, ball.diameter, 0, 2*Math.PI);
   ctx.fillStyle = "White";
   ctx.fill();
   //ctx.stroke();
@@ -164,7 +164,11 @@ function update() {
   updatePaddle();
   
   checkSounds();
+  checkNumBoxesLeft();
   
+  checkCollision();
+  
+  // run at end of update
   if(!gameOver) {
     requestAnimationFrame(update);
   }
@@ -199,7 +203,6 @@ function keyUp(key) {
 function updateBall() {
   
   moveBall();
-  checkCollision();
   drawBall();
   createBallTrail();
   drawBallTrail();
@@ -255,10 +258,10 @@ function checkBoxCollision() {
 }
 
 function checkBoxAndBallCollision(box) {
-  if (ball.x < box.x + box.width &&
-   ball.x + ball.width > box.x &&
-   ball.y < box.y + box.height &&
-   ball.y + ball.height > box.y) {
+  if (ball.x + ball.velX < box.x + box.width &&
+   ball.x + ball.velX + ball.width > box.x &&
+   ball.y + ball.velY < box.y + box.height &&
+   ball.y + ball.velY + ball.height > box.y) {
     ballHitBox(box);
     increaseBallSpeed();
     let newSound = new sound('ballHitBox');
@@ -295,37 +298,41 @@ function checkIfPowerup(box) {
 }
 
 function getDirHit(box) {
-  if(ball.y <= box.y - (boxHeight/2)) {
+  
+  ball.velY = -ball.velY;
+  
+  if(ball.y + (ball.height / 2) <= box.y - (boxHeight/2)) {
     //console.log('hit bot')
-    ball.velY = -ball.velY;
+    //ball.velY = -ball.velY;
   }
   //Hit was from below the brick
 
-  if(ball.y >= box.y + (boxHeight/2)) {
+  if(ball.y + (ball.height / 2)>= box.y + (boxHeight/2)) {
     //console.log('hit top')
-    ball.velY = -ball.velY;
+    //ball.velY = -ball.velY;
   }
     //Hit was from above the brick
 
-  if(ball.x < box.x) {
+  if(ball.x + (ball.width / 2) < box.x + (box.width / 2)) {
     //console.log('hit left')
     //ball.velX = -ball.velX;
   }
     //Hit was on left
 
-  if(ball.x > box.x) {
+  if(ball.x + (ball.width / 2) > box.x + (box.width / 2)) {
     //console.log('hit right')
-    //ball.velX = -ball.velX;
+    //ball.velX = +ball.velX;
   }
     //Hit was on right
 }
 
 function checkPaddleCollision() {
 
-  if (ball.x < paddle.x + paddle.width &&
-   ball.x + ball.width > paddle.x &&
-   ball.y < paddle.y + paddle.height &&
-   ball.y + ball.height > paddle.y) {
+  // add the ball velocity into the collision detection to detect if the next move is going to overlap / collide
+  if (ball.x + ball.velX < paddle.x + paddle.width &&
+   ball.x + ball.velX + ball.width > paddle.x &&
+   ball.y + ball.velY < paddle.y + paddle.height &&
+   ball.y + ball.velY + ball.height > paddle.y) {
     ballHitPaddle();
     let newSound = new sound('ballHitPaddle');
   }
@@ -428,7 +435,7 @@ function createBallTrail() {
 function drawBallTrail() {
   ballTrail.forEach((trail) => {
     ctx.beginPath();
-    ctx.arc(trail.x, trail.y , ball.radius, 0, 2*Math.PI);
+    ctx.arc(trail.x, trail.y , ball.diameter, 0, 2*Math.PI);
     //ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
     //ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
@@ -468,7 +475,7 @@ function drawExplosions() {
       particle.x += particle.velX;
       particle.y += particle.velY;
       ctx.beginPath();
-      ctx.arc(particle.x + cameraOffset.x, particle.y + cameraOffset.y, (ball.radius / 3), 0, 2*Math.PI);
+      ctx.arc(particle.x + cameraOffset.x, particle.y + cameraOffset.y, (ball.diameter / 3), 0, 2*Math.PI);
       ctx.fillStyle = "rgba(232, 213, 48, 1)";
       ctx.fill();
     });
@@ -487,7 +494,7 @@ function clearExplosions() {
 }
 
 function preloadSounds() {
-  let numAudio = 5;
+  let numAudio = 10;
   let repeatedAudioFiles = 3;
   totalAudioToLoad = numAudio * repeatedAudioFiles + 1;
   audioLoaded = 0;
@@ -624,6 +631,14 @@ function checkSounds() {
   // check if the music is playing
   if(song1.paused) {
     //song1.play();
+  }
+}
+
+function checkNumBoxesLeft() {
+  //console.log('num boxes left = ' + boxes.length);
+  if(boxes.length === 0) {
+    // if there are no boxes left then stop the game and set player win condition to true
+    gameOver = true;
   }
 }
 

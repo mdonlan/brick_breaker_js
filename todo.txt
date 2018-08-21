@@ -11,3 +11,5 @@ Brick Breaker JS TODO
 7. add power up blocks
     -- these blocks when hit will drop a power up
     -- the player must move the paddle to 'catch' the power up or it will not activate
+8. fix weird paddle / ball behaviour when then ball hits the side of the paddle
+    -- the ball goes horizontally though the paddle until it comes out the other side
