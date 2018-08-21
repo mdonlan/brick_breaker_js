@@ -23,6 +23,7 @@ let boxes = [];
 let ballTrail = [];
 let explosionParticles = [];
 let ballSpeed = 0.5;
+let maxBallSpeed = 1;
 let paddleSpeed = 10;
 let gameOver = false;
 let powerups = [];
@@ -300,6 +301,7 @@ function ballHitBox(box) {
   // display special effects on hit
   hitBlockEffects(box);
   getDirHit(box);
+  createBallTrail('boxHit');
   checkIfPowerup(box);
   //console.log('ball hit a box');
   for(let i = 0; i < boxes.length; i++) {
@@ -499,11 +501,16 @@ function changeBackground() {
   colorChangedTime = performance.now() + 200;
 }
 
-function createBallTrail() {
+function createBallTrail(type) {
   let newTrail = {
     x: ball.x,
     y: ball.y,
     drawTime: performance.now(),
+    type: null,
+  }
+  
+  if(type == 'boxHit') {
+    newTrail.type = "boxHit";
   }
   ballTrail.push(newTrail);
 }
@@ -512,10 +519,14 @@ function drawBallTrail() {
   ballTrail.forEach((trail) => {
     ctx.beginPath();
     ctx.arc(trail.x, trail.y , ball.diameter, 0, 2*Math.PI);
-    //ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
-    //ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
-    ctx.stroke();
+    
+    if(trail.type == 'boxHit') {
+      ctx.fillStyle = "rgba(240, 237, 23, 0.9)";
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
+      ctx.stroke();
+    }
   })
 }
 
@@ -736,7 +747,10 @@ function moveAllBoxes() {
 }
 
 function increaseBallSpeed() {
-  ballSpeed += 0.01;
+  //console.log("ballSpeed: " + ballSpeed)
+  if(ballSpeed < maxBallSpeed) {
+    ballSpeed += 0.01; 
+  }
 }
 
 function drawPowerups() {
