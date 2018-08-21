@@ -13,3 +13,6 @@ Brick Breaker JS TODO
     -- the player must move the paddle to 'catch' the power up or it will not activate
 8. fix weird paddle / ball behaviour when then ball hits the side of the paddle
     -- the ball goes horizontally though the paddle until it comes out the other side
+    
+9. check for ball / box collision on all four sides of box
+    -- right now when we hit a box we just invert y, but if we hit the left or right side of the box we actually want to invert the x rather than the y

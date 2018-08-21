@@ -26,11 +26,18 @@ let ballSpeed = 0.5;
 let paddleSpeed = 10;
 let gameOver = false;
 let powerups = [];
+let colorChangedTime = null;
 
 let sounds = {
   boxHit1: [],
   boxHit2: [],
   paddleHit1: [],
+}
+
+let backgroundRect = {
+  width: canvas.width,
+  height: canvas.height,
+  color: '#222222',
 }
 
 let keys = {
@@ -159,6 +166,7 @@ function createBox(x, y) {
 function update() {
   clearCanvas();
   
+  drawBackground();
   drawBoxes();
   updateBall();
   updatePaddle();
@@ -305,25 +313,29 @@ function getDirHit(box) {
     //console.log('hit bot')
     //ball.velY = -ball.velY;
   }
-  //Hit was from below the brick
 
   if(ball.y + (ball.height / 2)>= box.y + (boxHeight/2)) {
     //console.log('hit top')
     //ball.velY = -ball.velY;
   }
-    //Hit was from above the brick
 
   if(ball.x + (ball.width / 2) < box.x + (box.width / 2)) {
     //console.log('hit left')
     //ball.velX = -ball.velX;
   }
-    //Hit was on left
 
   if(ball.x + (ball.width / 2) > box.x + (box.width / 2)) {
     //console.log('hit right')
     //ball.velX = +ball.velX;
   }
-    //Hit was on right
+   
+  /*
+  
+  //trying to determine if the ball hit the left or right side of the box
+  if(ball.y > box.y && ball.y + ball.height < box.y) {
+    ball.velX = -box.velX;
+  }
+  /*
 }
 
 function checkPaddleCollision() {
@@ -416,11 +428,18 @@ function cameraShake() {
 }
 
 function changeBackground() {
+  /*
   let canvas = document.querySelector(".game_canvas");
   canvas.classList.add("canvas_flash_background");
   setTimeout(() => {
     canvas.classList.remove("canvas_flash_background");
   }, 200);
+  */
+  
+  let color = "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);});
+  backgroundRect.color = color;
+  
+  colorChangedTime = performance.now() + 200;
 }
 
 function createBallTrail() {
@@ -640,6 +659,17 @@ function checkNumBoxesLeft() {
     // if there are no boxes left then stop the game and set player win condition to true
     gameOver = true;
   }
+}
+
+function drawBackground() {
+  if(colorChangedTime != null) {
+    if(performance.now() > colorChangedTime) {
+      backgroundRect.color = '#222222';
+    }
+  }
+  ctx.beginPath();
+  ctx.fillStyle = backgroundRect.color;
+  ctx.fillRect(0, 0, backgroundRect.width, backgroundRect.height);
 }
 
 start();
