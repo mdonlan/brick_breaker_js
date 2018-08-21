@@ -27,6 +27,12 @@ let paddleSpeed = 15;
 let gameOver = false;
 let powerups = [];
 
+let sounds = {
+  boxHit1: [],
+  boxHit2: [],
+  paddleHit1: [],
+}
+
 let keys = {
   a: false,
   d: false,
@@ -65,10 +71,11 @@ function drawBall() {
 
 function start() {
   //drawBall();
+  preloadSounds();
   createBoxes();
   
   moveAllBoxes();
-  waitForStart();
+  //waitForStart();
 }
 
 function waitForStart() {
@@ -156,6 +163,8 @@ function update() {
   updateBall();
   updatePaddle();
   
+  checkSounds();
+  
   if(!gameOver) {
     requestAnimationFrame(update);
   }
@@ -188,12 +197,9 @@ function keyUp(key) {
 }
 
 function updateBall() {
-  let isCollision = checkCollision();
   
-  if(!isCollision) {
-    moveBall();
-  }
-  
+  moveBall();
+  checkCollision();
   drawBall();
   createBallTrail();
   drawBallTrail();
@@ -379,7 +385,7 @@ function cameraShake() {
   let numShakes = 0;
   let maxShakes = 10;
   let shakeInterval = setInterval(() => {
-    console.log('shake')
+    //console.log('shake')
     
     let randX = Math.floor(Math.random() * 10) + 1;
     let randY = Math.floor(Math.random() * 10) + 1;
@@ -480,28 +486,69 @@ function clearExplosions() {
   }
 }
 
+function preloadSounds() {
+  let numAudio = 5;
+  let repeatedAudioFiles = 3;
+  totalAudioToLoad = numAudio * repeatedAudioFiles + 1;
+  audioLoaded = 0;
+  for(let i = 0; i < numAudio; i++) {
+    // create multiple versions to preload of any sound 
+    // that might be player more than once at the same time
+    boxHit1 = new Audio("./assets/sounds/ballHitBrick1.mp3");
+    boxHit1.oncanplay = loadedAudio();
+    sounds.boxHit1.push(boxHit1);
+    boxHit2 = new Audio("./assets/sounds/ballHitBrick2.mp3");
+    boxHit2.oncanplay = loadedAudio();
+    sounds.boxHit2.push(boxHit2);
+    paddleHit1 = new Audio("./assets/sounds/paddleHit1.mp3");
+    paddleHit1.oncanplay = loadedAudio();
+    sounds.paddleHit1.push(paddleHit1);
+  }
+  
+  song1 = new Audio("./assets/sounds/music1.mp3");
+  song1.oncanplay = loadedAudio();
+}
+
+function loadedAudio() {
+  audioLoaded++;
+  if(audioLoaded == totalAudioToLoad) {
+    waitForStart();
+  }
+}
+
 function sound(event) {
   
-  let src = setSoundSRC(event);
-  
-  this.sound = document.createElement("audio");
-  this.sound.src = src;
-  this.sound.setAttribute("preload", "auto");
-  this.sound.setAttribute("controls", "none");
-  this.sound.style.display = "none";
-  document.body.appendChild(this.sound);
-  this.play = function(){
-      this.sound.play();
-  }
-  this.pause = function(){
-      this.sound.pause();
+  if(event == 'ballHitBox') {
+    let randSound = Math.random(); // rand 0 to 1
+    if(randSound > 0.5) {
+      playSound('boxHit1');
+    } else {
+      playSound('boxHit2');
+    }
+  } else if(event == 'ballHitPaddle') {
+    playSound('paddleHit1');
   }
   
-  this.play();
   
-  setTimeout(() => {
-    clearOldSounds();
-  }, 3000);
+}
+
+function playSound(soundToPlay) {
+  // loop through copy of the sound and find one that isn't playing
+  for(let i = 0; i < sounds[soundToPlay].length; i++) {
+    let sound = sounds[soundToPlay][i];
+    if(sound.paused) {
+      sound.play();
+      break;
+    }
+  }
+  /*
+  sounds[soundToPlay].forEach((sound) => {
+    console.log(sounds)
+    if(sound.paused) {
+      sound.play();
+    }
+  })
+  */
 }
 
 function setSoundSRC(event) {
@@ -571,6 +618,13 @@ function drawPowerups() {
     ctx.fillStyle = powerup.color;
     ctx.fillRect(powerup.x + cameraOffset.x, powerup.y + cameraOffset.y, powerup.width, powerup.height);
   });
+}
+
+function checkSounds() {
+  // check if the music is playing
+  if(song1.paused) {
+    //song1.play();
+  }
 }
 
 start();
