@@ -36,12 +36,14 @@ let backgroundCircle = {
   diameter: 0,
   isActive: false,
   color: null,
+  opacity: 1,
 }
 
 let sounds = {
   boxHit1: [],
   boxHit2: [],
   paddleHit1: [],
+  countdownSound: [],
 }
 
 let backgroundRect = {
@@ -70,11 +72,14 @@ let ball = {
   diameter: 10,
 };
 
+let paddleHeight = 10;
+let paddleWidth = canvas.width / 10;
+
 let paddle = {
-  x: canvas.width / 2,
-  y: canvas.height - 30,
-  width: canvas.width / 10,
-  height: 10,
+  width: paddleWidth,
+  height: paddleHeight,
+  x: (canvas.width / 2) - (paddleWidth/2),
+  y: (canvas.height - 30) - (paddleHeight / 2),
 };
 
 function drawBall() {
@@ -287,7 +292,7 @@ function checkBoxAndBallCollision(box) {
    ball.y + ball.velY + ball.height > box.y) {
     ballHitBox(box);
     increaseBallSpeed();
-    let newSound = new sound('ballHitBox');
+    sound('ballHitBox');
   }
 }
 
@@ -361,7 +366,7 @@ function checkPaddleCollision() {
    ball.y + ball.velY < paddle.y + paddle.height &&
    ball.y + ball.velY + ball.height > paddle.y) {
     ballHitPaddle();
-    let newSound = new sound('ballHitPaddle');
+    sound('ballHitPaddle');
   }
 }
 
@@ -433,9 +438,21 @@ function setBackgroundCircle(box) {
     y: box.y + (box.height / 2),
     diameter: 0,
     isActive: true,
-    color: "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);}),
+    color: randomRGBAColor(),
+    opacity: 1,
+    //"#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);}),
   }
   backgroundCircles.push(newBackgroundCircle);
+}
+
+function randomRGBAColor() {
+  let r = Math.floor(Math.random() * 255);
+  let g = Math.floor(Math.random() * 255);
+  let b = Math.floor(Math.random() * 255);
+  let a = 1;
+  let rgba = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+  
+  return rgba;
 }
 
 function cameraShake() {
@@ -553,33 +570,77 @@ function clearExplosions() {
 }
 
 function preloadSounds() {
-  let numAudio = 10;
-  let repeatedAudioFiles = 3;
-  totalAudioToLoad = numAudio * repeatedAudioFiles + 1;
+  let numAudio = 1;
+  let repeatedAudioFiles = 4;
+  totalAudioToLoad = numAudio * repeatedAudioFiles; // this does not count the song b/c that takes a long time to load
   audioLoaded = 0;
-  for(let i = 0; i < numAudio; i++) {
-    // create multiple versions to preload of any sound 
-    // that might be player more than once at the same time
-    boxHit1 = new Audio("./assets/sounds/ballHitBrick1.mp3");
-    boxHit1.oncanplay = loadedAudio();
-    sounds.boxHit1.push(boxHit1);
-    boxHit2 = new Audio("./assets/sounds/ballHitBrick2.mp3");
-    boxHit2.oncanplay = loadedAudio();
-    sounds.boxHit2.push(boxHit2);
-    paddleHit1 = new Audio("./assets/sounds/paddleHit1.mp3");
-    paddleHit1.oncanplay = loadedAudio();
-    sounds.paddleHit1.push(paddleHit1);
+  
+  //set the start button elem to show loading until all sounds have been loaded
+  let startButtonElem = document.querySelector(".start_button");
+  startButtonElem.innerHTML = "LOADING"
+  
+  // create multiple versions to preload of any sound 
+  // that might be player more than once at the same time
+  boxHit1 = new Audio("./assets/sounds/ballHitBrick1.mp3");
+  boxHit1.addEventListener('canplaythrough', soundLoaded, false);
+  sounds.boxHit1.push(boxHit1);
+
+  boxHit2 = new Audio("./assets/sounds/ballHitBrick2.mp3");
+  boxHit2.addEventListener('canplaythrough', soundLoaded, false);
+  sounds.boxHit2.push(boxHit2);
+
+  paddleHit1 = new Audio("./assets/sounds/paddleHit1.mp3");
+  paddleHit1.addEventListener('canplaythrough', soundLoaded, false);
+  sounds.paddleHit1.push(paddleHit1);
+
+  countdownSound = new Audio("./assets/sounds/paddleHit2.wav");
+  countdownSound.addEventListener('canplaythrough', soundLoaded, false);
+  sounds.countdownSound.push(countdownSound);
+  
+  
+  for(let i = 0; i < 10; i++) {
+    
+    // make copies of each sound 
+    // do this rather than load each sound from server every time
+    
+    let newBoxHit1 = boxHit1.cloneNode();
+    newBoxHit1.addEventListener('canplaythrough', soundLoaded, false);
+    sounds.boxHit1.push(newBoxHit1);
+
+    let newBoxHit2 = boxHit2.cloneNode();
+    newBoxHit2.addEventListener('canplaythrough', soundLoaded, false);
+    //boxHit2.oncanplay = loadedAudio();
+    sounds.boxHit2.push(newBoxHit2);
+
+    let newPaddleHit1 = paddleHit1.cloneNode();
+    newPaddleHit1.addEventListener('canplaythrough', soundLoaded, false);
+    sounds.paddleHit1.push(newPaddleHit1);
+
+    let newCountdownSound = countdownSound.cloneNode();
+    newCountdownSound.addEventListener('canplaythrough', soundLoaded, false);
+    //countdownSound.oncanplay = loadedAudio();
+    sounds.countdownSound.push(newCountdownSound);
   }
+ 
   
   song1 = new Audio("./assets/sounds/music1.mp3");
-  song1.oncanplay = loadedAudio();
+  //song1.addEventListener('canplaythrough', soundLoaded, false);
+  //song1.oncanplay = loadedAudio();
 }
 
-function loadedAudio() {
+function soundLoaded() {
   audioLoaded++;
   if(audioLoaded == totalAudioToLoad) {
+    console.log('all audio loaded')
     waitForStart();
+    allowStartButtonClick();
   }
+}
+
+function allowStartButtonClick() {
+  let startButtonElem = document.querySelector(".start_button");
+  startButtonElem.onclick = clickedStartButton;
+  startButtonElem.innerHTML = "START";
 }
 
 function sound(event) {
@@ -593,6 +654,8 @@ function sound(event) {
     }
   } else if(event == 'ballHitPaddle') {
     playSound('paddleHit1');
+  } else if(event == 'countdownSound') {
+    playSound('countdownSound');
   }
   
   
@@ -665,6 +728,7 @@ function moveAllBoxes() {
     });
     clearCanvas();
     drawBoxesSlowly();
+    drawPaddle();
     requestAnimationFrame(moveAllBoxes);
   } else {
     boxesInStartingPositions = true;
@@ -723,7 +787,16 @@ function drawBackgroundCircle() {
     if(circle.diameter < canvas.width) {
       circle.diameter += 20;
     } else {
-      backgroundCircles.splice(index, 1);
+      // if the background circle is as large as the screen then fade it out
+
+      circle.opacity -= 0.02;
+      // using regex to reduce opacity
+      circle.color = circle.color.replace(/[^,]+(?=\))/, circle.opacity)
+
+      if(circle.opacity <= 0) {
+        backgroundCircles.splice(index, 1);
+      }
+      
     }
   }
   });
@@ -756,6 +829,7 @@ function updateCountdown() {
     } else {
       countdownElem.innerHTML = count;
       count--;
+      sound('countdownSound');
     }
 }
 
