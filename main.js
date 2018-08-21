@@ -27,6 +27,16 @@ let paddleSpeed = 10;
 let gameOver = false;
 let powerups = [];
 let colorChangedTime = null;
+let backgroundCircles = [];
+let countdownFinished = false;
+
+let backgroundCircle = {
+  x: null,
+  y: null,
+  diameter: 0,
+  isActive: false,
+  color: null,
+}
 
 let sounds = {
   boxHit1: [],
@@ -77,6 +87,9 @@ function drawBall() {
 }
 
 function start() {
+  // load all assets, create the boxes, and move them into place
+  
+  
   //drawBall();
   preloadSounds();
   createBoxes();
@@ -87,7 +100,8 @@ function start() {
 
 function waitForStart() {
   // wait to start the update loop until the blocks have moved into their starting positions
-  if(boxesInStartingPositions) {
+  if(boxesInStartingPositions && countdownFinished) {
+    // run first update loop
     update();
   } else {
     requestAnimationFrame(waitForStart);
@@ -167,6 +181,7 @@ function update() {
   clearCanvas();
   
   drawBackground();
+  drawBackgroundCircle();
   drawBoxes();
   updateBall();
   updatePaddle();
@@ -335,7 +350,7 @@ function getDirHit(box) {
   if(ball.y > box.y && ball.y + ball.height < box.y) {
     ball.velX = -box.velX;
   }
-  /*
+  */
 }
 
 function checkPaddleCollision() {
@@ -393,9 +408,34 @@ function clearCanvas() {
 
 function hitBlockEffects(box) {
   // put any special effects that deal with the ball hitting something here
-  changeBackground();
+  
+  setBackgroundCircle(box);
+  //changeBackground();
   explosion();
   cameraShake();
+}
+
+function setBackgroundCircle(box) {
+  /*
+  // only have one background circle, this will cause it to stop and redraw when hitting multiple 
+  // blocks in short sucsession
+  
+  backgroundCircle.x = box.x + (box.width / 2);
+  backgroundCircle.y = box.y + (box.height / 2);
+  backgroundCircle.color = "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);});
+  backgroundCircle.isActive = true;
+  backgroundCircle.diameter = 0;
+  */
+  
+  // multiple background circles, add a new one each time
+  let newBackgroundCircle = {
+    x: box.x + (box.width / 2),
+    y: box.y + (box.height / 2),
+    diameter: 0,
+    isActive: true,
+    color: "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);}),
+  }
+  backgroundCircles.push(newBackgroundCircle);
 }
 
 function cameraShake() {
@@ -670,6 +710,53 @@ function drawBackground() {
   ctx.beginPath();
   ctx.fillStyle = backgroundRect.color;
   ctx.fillRect(0, 0, backgroundRect.width, backgroundRect.height);
+}
+
+function drawBackgroundCircle() {
+  backgroundCircles.forEach((circle, index) => {
+    if(circle.isActive) {
+    ctx.beginPath();
+    ctx.arc(circle.x + cameraOffset.x, circle.y + cameraOffset.y, circle.diameter, 0, 2*Math.PI);
+    ctx.fillStyle = circle.color;
+    ctx.fill();
+    
+    if(circle.diameter < canvas.width) {
+      circle.diameter += 20;
+    } else {
+      backgroundCircles.splice(index, 1);
+    }
+  }
+  });
+}
+
+function clickedStartButton() {
+  console.log('clicked start');
+  
+  let startButton = document.querySelector(".start_button");
+  startButton.classList.add("hide");
+  startBeginningCountdown();
+}
+
+function startBeginningCountdown() {
+  count = 3;
+  countdownElem = document.querySelector(".countdown");
+  countdownElem.classList.remove("hide");
+  countdownInterval = setInterval(() => {
+    updateCountdown();
+  }, 1000);
+  // run the function first time, b/c setInterval has delay
+  updateCountdown();
+}
+
+function updateCountdown() {
+  if(count === 0) {
+      countdownFinished = true;
+      clearInterval(countdownInterval);
+      countdownElem.classList.add("hide");
+    } else {
+      countdownElem.innerHTML = count;
+      count--;
+    }
 }
 
 start();

@@ -16,3 +16,4 @@ Brick Breaker JS TODO
     
 9. check for ball / box collision on all four sides of box
     -- right now when we hit a box we just invert y, but if we hit the left or right side of the box we actually want to invert the x rather than the y
+10. score multiplier for when hitting multiple boxes in quick sucsession
