@@ -185,8 +185,7 @@ function createBox(x, y) {
     targetY: y,
     color: color,
     isPowerUp: isPowerup,
-    
-    // rand color == "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);})
+    delay: Math.random(),
   }
   boxes.push(newBox)
 }
@@ -541,11 +540,26 @@ function createBallTrail(type) {
 }
 
 function drawBallTrail() {
-  ballTrail.forEach((trail) => {
+  ballTrail.forEach((trail, index) => {
+    /*
+    let nextTrail = ballTrail[index + 1];
+    if(index + 1 <= ballTrail.length - 1) {
+      ctx.beginPath();
+      //ctx.arc(trail.x, trail.y , ball.diameter, 0, 2*Math.PI);
+      //ctx.fillStyle = "White";
+      //ctx.fillRect(trail.x, trail.y, ball.width, ball.height);
+      ctx.strokeStyle = "rgba(255, 255, 255, 1)";
+      ctx.moveTo(trail.x, trail.y);
+      ctx.lineTo(nextTrail.x, nextTrail.y);
+      ctx.stroke();
+    }
+    */
     ctx.beginPath();
     ctx.arc(trail.x, trail.y , ball.diameter, 0, 2*Math.PI);
     
+    
     if(trail.type == 'boxHit') {
+      // have a special trail if it represents a place where a box was hit
       ctx.fillStyle = "rgba(240, 237, 23, 0.9)";
       ctx.fill();
     } else {
@@ -749,24 +763,28 @@ function drawBoxesSlowly() {
 }
 
 function moveAllBoxes() {
-  if(boxes[0].y != boxes[0].targetY) {
-    // check if one of the boxes is in the current pos if so then stop updating
-    boxes.forEach((box) => {
+  let startTime = performance.now();
+  let complete = true;
+  boxes.forEach((box) => {
+    if(box.delay * 1000 < startTime) {
       if(box.y < box.targetY) {
         if(box.y + boxMoveInSpeed > box.targetY) {
+          complete = false;
           let distToTarget = box.targetY - box.y;
           box.y += distToTarget;
         } else {
           box.y += boxMoveInSpeed;
         }
-        
       }
-    });
-    clearCanvas();
-    drawBoxesSlowly();
-    drawPaddle();
-    requestAnimationFrame(moveAllBoxes);
-  } else {
+    }
+  });
+
+  clearCanvas();
+  drawBoxesSlowly();
+  drawPaddle();
+  requestAnimationFrame(moveAllBoxes);
+
+  if(complete) {
     boxesInStartingPositions = true;
   }
 }
