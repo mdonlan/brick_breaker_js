@@ -6,6 +6,7 @@ canvas.width = window.innerWidth;
 
 document.addEventListener("keydown", keyHandler);
 document.addEventListener("keyup", keyHandler);
+document.addEventListener("keypress", keyHandler);
 
 let ballRadius = 10;
 let ballOffset = ballRadius / 2;
@@ -30,6 +31,7 @@ let powerups = [];
 let colorChangedTime = null;
 let backgroundCircles = [];
 let countdownFinished = false;
+let isPaused = false;
 
 let backgroundCircle = {
   x: null,
@@ -58,30 +60,36 @@ let keys = {
   d: false,
 }
 
-let cameraOffset = {
-  x: 0,
-  y: 0,
-}
-
-let ball = {
-  x: (canvas.width / 2 ) - ballRadius / 2,
-  y: canvas.height - 60,
-  velX: 5,
-  velY: 5,
-  width: 10,
-  height: 10,
-  diameter: 10,
-};
-
 let paddleHeight = 10;
 let paddleWidth = canvas.width / 10;
 
-let paddle = {
-  width: paddleWidth,
-  height: paddleHeight,
-  x: (canvas.width / 2) - (paddleWidth/2),
-  y: (canvas.height - 30) - (paddleHeight / 2),
-};
+
+
+function setStartingState() {
+  
+  paddle = {
+    width: paddleWidth,
+    height: paddleHeight,
+    x: (canvas.width / 2) - (paddleWidth/2),
+    y: (canvas.height - 30) - (paddleHeight / 2),
+  };
+  
+  
+  cameraOffset = {
+    x: 0,
+    y: 0,
+  }
+
+  ball = {
+    x: (canvas.width / 2 ) - ballRadius / 2,
+    y: canvas.height - 60,
+    velX: 5,
+    velY: 5,
+    width: 10,
+    height: 10,
+    diameter: 10,
+  };
+}
 
 function drawBall() {
   
@@ -95,7 +103,7 @@ function drawBall() {
 function start() {
   // load all assets, create the boxes, and move them into place
   
-  
+  setStartingState();
   //drawBall();
   preloadSounds();
   createBoxes();
@@ -198,18 +206,27 @@ function update() {
   checkCollision();
   
   // run at end of update
-  if(!gameOver) {
+  // only run if not game over or if game paused
+  // if game is paused, need to manually restart update function by calling it
+  if(!gameOver && !isPaused) {
     requestAnimationFrame(update);
   }
 }
 
 function keyHandler(event) {
-  //console.log(event.key)
   let key = event.key;
   if(event.type == "keydown") {
     keyDown(key);
   } else if(event.type == "keyup") {
     keyUp(key);
+  } else if(event.type == "keypress") {
+    keyPress(key);
+  }
+}
+
+function keyPress(key) {
+  if(key == " " || key.code == "Space") {
+    pause();
   }
 }
 
@@ -329,26 +346,26 @@ function checkIfPowerup(box) {
 
 function getDirHit(box) {
   
-  ball.velY = -ball.velY;
+  //ball.velY = -ball.velY;
   
   if(ball.y + (ball.height / 2) <= box.y - (boxHeight/2)) {
     //console.log('hit bot')
-    //ball.velY = -ball.velY;
+    ball.velY = -ball.velY;
   }
 
   if(ball.y + (ball.height / 2)>= box.y + (boxHeight/2)) {
     //console.log('hit top')
-    //ball.velY = -ball.velY;
+    ball.velY = -ball.velY;
   }
 
-  if(ball.x + (ball.width / 2) < box.x + (box.width / 2)) {
-    //console.log('hit left')
-    //ball.velX = -ball.velX;
+  if(ball.x + ball.width < box.x && ball.y > box.y && ball.y + ball.height < box.y + box.height) {
+    console.log('hit left')
+    ball.velX = -ball.velX;
   }
 
-  if(ball.x + (ball.width / 2) > box.x + (box.width / 2)) {
-    //console.log('hit right')
-    //ball.velX = +ball.velX;
+  if(ball.x > box.x + box.width && ball.y > box.y && ball.y + ball.height < box.y + box.height) {
+    console.log('hit right')
+    ball.velX = -ball.velX;
   }
    
   /*
@@ -400,13 +417,21 @@ function checkBounds() {
     // hit top or bot bounds
     if(ball.y + ballOffset > canvas.height) {
       // if the ball hits the bottom bound
-      gameOver = true;
+      setGameOver();
     } else {
       ball.velY = -ball.velY;
     }
     
   }
  
+}
+
+function setGameOver() {
+  gameOver = true;
+  let gameOverElem = document.querySelector(".gameOver");
+  gameOverElem.classList.remove("hide");
+  let replayElem = document.querySelector(".replay");
+  replayElem.classList.remove("hide");
 }
 
 function clearCanvas() {
@@ -845,6 +870,37 @@ function updateCountdown() {
       count--;
       sound('countdownSound');
     }
+}
+
+function hideElem(elemClassName) {
+  let elem = document.querySelector("." + elemClassName);
+  elem.classList.add("hide");
+}
+
+function replay() {
+  console.log('clicked the replay button')
+  // reset the game state
+  hideElem("replay");
+  hideElem("gameOver");
+  boxes = [];
+  setStartingState();
+  createBoxes();
+  moveAllBoxes();
+  gameOver = false;
+  countdownFinished = false;
+  ballTrail = [];
+  ballSpeed = 0.5;
+  startBeginningCountdown();
+  waitForStart();
+}
+
+function pause() {
+  if(isPaused) {
+    isPaused = false;
+    update();
+  } else {
+    isPaused = true;
+  }
 }
 
 start();
