@@ -32,6 +32,10 @@ let colorChangedTime = null;
 let backgroundCircles = [];
 let countdownFinished = false;
 let isPaused = false;
+let lastCalledTime;
+let fps;
+
+// declare all DOM elem references
 
 let backgroundCircle = {
   x: null,
@@ -201,7 +205,7 @@ function update() {
   
   checkSounds();
   checkNumBoxesLeft();
-  
+  getFPS();
   checkCollision();
   
   // run at end of update
@@ -210,6 +214,18 @@ function update() {
   if(!gameOver && !isPaused) {
     requestAnimationFrame(update);
   }
+}
+
+function getFPS() {
+  if(!lastCalledTime) {
+     lastCalledTime = Date.now();
+     fps = 0;
+     return;
+  }
+  delta = (Date.now() - lastCalledTime)/1000;
+  lastCalledTime = Date.now();
+  fps = 1/delta;
+  
 }
 
 function keyHandler(event) {
