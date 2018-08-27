@@ -176,20 +176,28 @@ function createBox(x, y) {
   
   let color = '#CA2F0E';
   let isPowerup = false;
-  if(powerupRandChance > .95) {
+  if(powerupRandChance > 0.9) {
     color = '#DEA823';
     isPowerup = true;
   }
+  let randStartingOffset = Math.floor(Math.random() * 1000) + 1;
+  let plusOrMinus = Math.random() < 0.5 ? -1 : 1;
+  let leftOrRight;
+  if(plusOrMinus > 0) {
+    leftOrRight = 0;
+  } else {
+    leftOrRight = canvas.width;
+  }
   let newBox = {
     x: x,
-    y: y + yNegOffset,
+    y: -randStartingOffset,
     height: boxHeight,
     width: boxWidthByCanvasSize,
     targetX: x,
     targetY: y,
     color: color,
     isPowerUp: isPowerup,
-    delay: Math.random(),
+    randomOffset: randStartingOffset,
   }
   boxes.push(newBox)
 }
@@ -200,13 +208,14 @@ function update() {
   drawBackground();
   drawBackgroundCircle();
   drawBoxes();
+  checkCollision();
   updateBall();
   updatePaddle();
   
   checkSounds();
   checkNumBoxesLeft();
   getFPS();
-  checkCollision();
+  
   
   // run at end of update
   // only run if not game over or if game paused
@@ -308,7 +317,7 @@ function checkCollision() {
   checkBounds();
   checkPaddleCollision();
   checkBoxCollision();
-  
+  checkPowerupCollision();
   return false;
 }
 
@@ -318,11 +327,38 @@ function checkBoxCollision() {
   });
 }
 
+function checkPowerupCollision() {
+  // check for collision between a falling powerup object and the paddle
+  powerups.forEach((powerup) => {
+    if (paddle.x < powerup.x + powerup.width &&
+      paddle.x + paddle.width > powerup.x &&
+      paddle.y < powerup.y + powerup.height &&
+      paddle.y + paddle.height > powerup.y) {
+      console.log('paddle hit powerup')
+      ballHitPowerup(powerup);
+      for(let i = 0; i < powerups.length; i++) {
+        if(powerup.x == powerups[i].x && powerup.y == powerups[i].y) {
+          powerups.splice(i, 1);
+        }
+      }
+      setTimeout(() => {
+        paddle.width = paddle.width / 2;
+      }, powerup.timeLength)
+    }
+  });
+}
+
+function ballHitPowerup(powerup) {
+  if(powerup.type == "double_paddle_size") {
+    paddle.width = paddle.width * 2;
+  }
+}
+
 function checkBoxAndBallCollision(box) {
-  if (ball.x + ball.velX < box.x + box.width &&
-   ball.x + ball.velX + ball.width > box.x &&
-   ball.y + ball.velY < box.y + box.height &&
-   ball.y + ball.velY + ball.height > box.y) {
+  if (ball.x + (ball.velX * ballSpeed) < box.x + box.width &&
+   ball.x + (ball.velX * ballSpeed)  + ball.width > box.x &&
+   ball.y + (ball.velY * ballSpeed)  < box.y + box.height &&
+   ball.y + (ball.velY * ballSpeed)  + ball.height > box.y) {
     ballHitBox(box);
     increaseBallSpeed();
     sound('ballHitBox');
@@ -354,40 +390,64 @@ function checkIfPowerup(box) {
       color: 'Green',
       height: 20,
       width: 20,
+      type: setPowerupType(),
+      timeLength: 5000, // 5s
     }
     powerups.push(newPowerup);
   }
+}
+  
+function setPowerupType() {
+  return "double_paddle_size"
 }
 
 function getDirHit(box) {
   
   //ball.velY = -ball.velY;
   
+  let ballLeft = ball.x;
+  let ballRight = ball.x + ball.width;
+  let ballTop = ball.y;
+  let ballBot = ball.y + ball.height;
+  
+  let boxLeft = box.x;
+  let boxRight = box.x + box.width;
+  let boxTop = box.y;
+  let boxBot = box.y + box.height;
+  
+  if(ballRight <= boxLeft) {
+    // right side of the ball is hitting the left side of the box
+    console.log('hit left side of box');
+    ball.velX = -ball.velX;
+  } else if(ballLeft >= boxRight) {
+    // left side of the ball is hitting the rright side of the box
+    console.log('hit right side of box');
+    ball.velX = -ball.velX;
+  } else if(ballBot <= boxTop) {
+    // bot of ball hitting top of box
+    console.log('hit top of box');
+    ball.velY = -ball.velY;
+  } else if(ballTop >= boxBot) {
+    // bot of ball hitting top of box
+    console.log('hit bot of box');
+    ball.velY = -ball.velY;
+  } 
+  
+  /*
   if(ball.y + (ball.height / 2) <= box.y - (boxHeight/2)) {
-    //console.log('hit bot')
+    console.log('hit top')
+    ball.velY = -ball.velY;
+  } else if(ball.y + (ball.height / 2) >= box.y + (boxHeight/2)) {
+    console.log('hit bot')
     ball.velY = -ball.velY;
   }
 
-  if(ball.y + (ball.height / 2)>= box.y + (boxHeight/2)) {
-    //console.log('hit top')
-    ball.velY = -ball.velY;
-  }
-
-  if(ball.x + ball.width < box.x && ball.y > box.y && ball.y + ball.height < box.y + box.height) {
+  if(ball.y > box.y && ball.y + ball.height < box.y + box.height) {
     console.log('hit left')
     ball.velX = -ball.velX;
-  }
-
-  if(ball.x > box.x + box.width && ball.y > box.y && ball.y + ball.height < box.y + box.height) {
+  } else if(ball.y > box.y && ball.y + ball.height < box.y + box.height) {
     console.log('hit right')
     ball.velX = -ball.velX;
-  }
-   
-  /*
-  
-  //trying to determine if the ball hit the left or right side of the box
-  if(ball.y > box.y && ball.y + ball.height < box.y) {
-    ball.velX = -box.velX;
   }
   */
 }
@@ -782,15 +842,39 @@ function moveAllBoxes() {
   let startTime = performance.now();
   let complete = true;
   boxes.forEach((box) => {
-    if(box.delay * 1000 < startTime) {
-      if(box.y < box.targetY) {
-        if(box.y + boxMoveInSpeed > box.targetY) {
-          complete = false;
-          let distToTarget = box.targetY - box.y;
-          box.y += distToTarget;
-        } else {
-          box.y += boxMoveInSpeed;
-        }
+    if(box.y < box.targetY) {
+      if(box.y + boxMoveInSpeed > box.targetY) {
+        let distToTarget = box.targetY - box.y;
+        box.y += distToTarget;
+      } else {
+        complete = false;
+        box.y += boxMoveInSpeed;
+      }
+    } else if(box.y > box.targetY) {
+      if(box.y - boxMoveInSpeed < box.targetY) {
+        let distToTarget = box.targetY - box.y;
+        box.y += distToTarget;
+      } else {
+        complete = false;
+        box.y -= boxMoveInSpeed;
+      }
+    }
+    
+    if(box.x < box.targetX) {
+      if(box.x + boxMoveInSpeed > box.targetX) {
+        let distToTarget = box.targetX - box.x;
+        box.x += distToTarget;
+      } else {
+        complete = false;
+        box.x += boxMoveInSpeed;
+      }
+    } else if(box.x > box.targetX) {
+      if(box.x - boxMoveInSpeed < box.targetX) {
+        let distToTarget = box.targetX - box.x;
+        box.x += distToTarget;
+      } else {
+        complete = false;
+        box.x -= boxMoveInSpeed;
       }
     }
   });
